@@ -163,4 +163,25 @@ func main() {
 		}
 		return
 	}
+
+	if parsedCommands.ParsedCommands["list"] {
+		var DirSep string
+		if runtime.GOOS == "windows" {
+			DirSep = "\\"
+		} else {
+			DirSep = "/"
+		}
+		fmt.Printf("DirSep: %v\n", DirSep)
+
+		langs, err := os.ReadDir(configDir)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		for i := 0; i < len(langs); i++ {
+			fmt.Println(langs[i].Name())
+		}
+		return
+	}
 }
