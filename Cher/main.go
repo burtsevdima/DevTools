@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 
 	consts "github.com/Shohsta73/DevTools/Cher/constants"
@@ -68,7 +69,6 @@ func getConfigDir() (string, error) {
 func main() {
 	CHER_DEBUG := os.Getenv("CHER_DEBUG")
 
-	fmt.Println(consts.DEBUG)
 	if CHER_DEBUG == "1" {
 		consts.DEBUG = true
 		fmt.Println(consts.DEBUG)
@@ -89,7 +89,9 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	fmt.Println(configDir)
+	if consts.DEBUG {
+		fmt.Println(configDir)
+	}
 
 	parsedCommands, err := Parser.Parse(os.Args[1:])
 	if err != nil {
@@ -141,6 +143,7 @@ func main() {
 		} else {
 			DirSep = "/"
 		}
+		fmt.Printf("DirSep: %v\n", DirSep)
 		return
 	}
 
@@ -150,6 +153,50 @@ func main() {
 			DirSep = "\\"
 		} else {
 			DirSep = "/"
+		}
+
+		if len(os.Args) != 3 {
+			fmt.Println("Usage: remove <lang>")
+			return
+		}
+		langDir := configDir + DirSep + os.Args[2]
+
+		configs, err := os.ReadDir(langDir)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		fmt.Println("Files in", langDir, "directory:")
+		for i := 0; i < len(configs); i++ {
+			fileName := configs[i].Name()
+			extension := filepath.Ext(fileName)
+			fileNameWithoutExt := fileName[:len(fileName)-len(extension)]
+			fmt.Printf("%d. %s\n", (i + 1), fileNameWithoutExt)
+		}
+
+		// Prompt the user to select a file
+		fmt.Print("Enter the number of the file you want to delete: ")
+		var userInput int
+		_, err = fmt.Scanln(&userInput)
+		if err != nil {
+			fmt.Println("Invalid input:", err)
+			return
+		}
+
+		// Ensure the user input is a valid index
+		if userInput < 1 || userInput > len(configs) {
+			fmt.Println("Invalid choice. Please select a number between 1 and", len(configs))
+			return
+		}
+
+		// Delete the selected file
+		selectedFile := configs[userInput-1]
+		err = os.Remove(langDir + string(os.PathSeparator) + selectedFile.Name())
+		if err != nil {
+			fmt.Println("Error deleting file:", err)
+		} else {
+			fmt.Println("File", selectedFile.Name(), "has been deleted.")
 		}
 		return
 	}
@@ -161,6 +208,7 @@ func main() {
 		} else {
 			DirSep = "/"
 		}
+		fmt.Printf("DirSep: %v\n", DirSep)
 		return
 	}
 
