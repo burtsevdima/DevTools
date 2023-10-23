@@ -207,7 +207,74 @@ func main() {
 		} else {
 			DirSep = "/"
 		}
-		fmt.Printf("DirSep: %v\n", DirSep)
+
+		if len(os.Args) < 3 {
+			fmt.Println("Usage: new <lang(s)>")
+			return
+		}
+
+		cfg, err := ini.Load(configFile)
+		if consts.DEBUG {
+			fmt.Println(cfg)
+		}
+
+		var editor string
+
+		if err == nil {
+			section, err := cfg.GetSection("editor")
+			if err != nil {
+				fmt.Println(err)
+				editor = fallbackEditor()
+			}
+
+			command, err := section.GetKey("command")
+			if err != nil {
+				fmt.Println(err)
+				editor = fallbackEditor()
+			}
+			editor = command.String()
+		} else {
+			editor = fallbackEditor()
+		}
+
+		for i := 2; i < len(os.Args); i++ {
+			langDir := configDir + DirSep + os.Args[i]
+			_, err := os.Stat(langDir)
+
+			if os.IsNotExist(err) {
+				fmt.Println("Directory", langDir, "does not exist.")
+				continue
+			} else {
+				fmt.Print("Please enter the name for new language configuration file: ")
+				var userInput string
+				_, err = fmt.Scanln(&userInput)
+				if err != nil {
+					fmt.Println("Invalid input:", err)
+					continue
+				}
+
+				if userInput == "" {
+					fmt.Printf("Not creating new configuration file for %s as ther was no name provided\n", os.Args[i])
+					continue
+				}
+
+				cmd := exec.Command(editor, langDir+string(os.PathSeparator)+userInput+".editorconfig")
+
+				cmd.Stdin = os.Stdin
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+
+				err = cmd.Start()
+				if err != nil {
+					panic(err)
+				}
+
+				err = cmd.Wait()
+				if err != nil {
+					panic(err)
+				}
+			}
+		}
 		return
 	}
 
