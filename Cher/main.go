@@ -19,6 +19,47 @@ func helpMessage() {
 	)
 }
 
+func writeConfigFile(dirPath *string) {
+	file := filepath.Join(*dirPath, "cher.config.ini")
+
+	_, err := os.Stat(file)
+	if os.IsNotExist(err) {
+		// File doesn't exist, create it
+		file, err := os.Create(file)
+		if err != nil {
+			fmt.Printf("Failed to create configuration file: %v\n", err)
+		}
+		file.Close() // Close the file to ensure it's created and empty
+	}
+
+	fmt.Print("Please enter the command for oppening text editor of your choice: ")
+	var userInput string
+	_, err = fmt.Scanln(&userInput)
+	if err != nil {
+		fmt.Println("Invalid input:", err)
+		return
+	}
+
+	// Ensure the user input is a valid index
+	if userInput == "" {
+		fmt.Printf("Invalid choice. Please input command for oppening text editro of your choice\n")
+		return
+	}
+
+	fileOpened, err := os.OpenFile(file, os.O_RDWR, 0644)
+	if err != nil {
+		fmt.Printf("Failed to open configuration file: %v\n", err)
+	}
+
+	contents := "[editor]\n" + "command = " + userInput + "\n"
+
+	_, err = fileOpened.WriteString(contents)
+	if err != nil {
+		fmt.Printf("Failed to write configuration file: %v\n", err)
+	}
+	fileOpened.Close()
+}
+
 func initCher() (string, error) {
 	configDir, err := getConfigDir()
 	if configDir == "" {
@@ -45,6 +86,8 @@ func initCher() (string, error) {
 	} else if err != nil {
 		return "", err // Some other error occurred
 	}
+
+	writeConfigFile(&configDir)
 
 	return configDir, nil
 }
