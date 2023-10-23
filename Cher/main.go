@@ -184,6 +184,14 @@ func main() {
 		} else {
 			DirSep = "/"
 		}
+
+		if len(os.Args) < 3 {
+			fmt.Println("Usage: add <lang(s)>")
+			return
+		}
+
+		var contents string
+
 		for i := 2; i < len(os.Args); i++ {
 			if os.Args[i] == "help" {
 				helpMessage()
@@ -196,7 +204,58 @@ func main() {
 				fmt.Println(err)
 				return
 			}
+
+			files, err := os.ReadDir(langDir)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
+			fmt.Println("Files in", langDir, "directory:")
+			for i := 0; i < len(files); i++ {
+				fileName := files[i].Name()
+				extension := filepath.Ext(fileName)
+				fileNameWithoutExt := fileName[:len(fileName)-len(extension)]
+				fmt.Printf("%d. %s\n", (i + 1), fileNameWithoutExt)
+			}
+
+			fmt.Print("Enter the number of the file you want to edit: ")
+			var userInput int
+			_, err = fmt.Scanln(&userInput)
+			if err != nil {
+				fmt.Println("Invalid input:", err)
+				return
+			}
+
+			// Ensure the user input is a valid index
+			if userInput < 1 || userInput > len(files) {
+				fmt.Println("Invalid choice. Please select a number between 1 and", len(files))
+				return
+			}
+
+			// Delete the selected file
+			selectedFile := files[userInput-1]
+			content, err := os.ReadFile(selectedFile.Name())
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			contents += string(content)
 		}
+
+		wd, err := os.Getwd()
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
+		err = os.WriteFile(filepath.Join(wd, ".editorconfig"), []byte(contents), 0644)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
 		return
 	}
 
