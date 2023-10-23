@@ -19,6 +19,7 @@ func NewParser() *Parser {
 	p.Commands = append(p.Commands, "new")
 	p.Commands = append(p.Commands, "remove")
 	p.Commands = append(p.Commands, "edit")
+	p.Commands = append(p.Commands, "list")
 
 	return p
 }
