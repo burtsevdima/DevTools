@@ -4,12 +4,31 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 
 	consts "github.com/Shohsta73/DevTools/Cher/constants"
 	"github.com/Shohsta73/DevTools/Cher/parser"
+	ini "gopkg.in/ini.v1"
 )
+
+func fallbackEditor() string {
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		switch runtime.GOOS {
+		case "windows":
+			editor = "notepad.exe"
+		case "linux":
+			editor = "nano"
+		default:
+			fmt.Printf("Unsupported OS: %s.\n"+
+				"Please checkout the issuse here:", runtime.GOOS)
+		}
+	}
+
+	return editor
+}
 
 func helpMessage() {
 	fmt.Println("usage: Cher <command>\n" +
@@ -136,6 +155,8 @@ func main() {
 		fmt.Println(configDir)
 	}
 
+	configFile := filepath.Join(configDir, "cher.config.ini")
+
 	parsedCommands, err := Parser.Parse(os.Args[1:])
 	if err != nil {
 		fmt.Println(err)
@@ -198,7 +219,7 @@ func main() {
 			DirSep = "/"
 		}
 
-		if len(os.Args) != 3 {
+		if len(os.Args) < 3 {
 			fmt.Println("Usage: remove <lang>")
 			return
 		}
@@ -251,7 +272,88 @@ func main() {
 		} else {
 			DirSep = "/"
 		}
-		fmt.Printf("DirSep: %v\n", DirSep)
+
+		if len(os.Args) < 3 {
+			fmt.Println("Usage: edit <lang>")
+			return
+		}
+
+		cfg, err := ini.Load(configFile)
+		if consts.DEBUG {
+			fmt.Println(cfg)
+		}
+
+		var editor string
+
+		if err == nil {
+			section, err := cfg.GetSection("editor")
+			if err != nil {
+				fmt.Println(err)
+				editor = fallbackEditor()
+			}
+
+			command, err := section.GetKey("command")
+			if err != nil {
+				fmt.Println(err)
+				editor = fallbackEditor()
+			}
+			editor = command.String()
+		} else {
+			editor = fallbackEditor()
+		}
+		langDir := configDir + DirSep + os.Args[2]
+
+		if consts.DEBUG {
+			fmt.Println(langDir)
+		}
+
+		files, err := os.ReadDir(langDir)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		fmt.Println("Files in", langDir, "directory:")
+		for i := 0; i < len(files); i++ {
+			fileName := files[i].Name()
+			extension := filepath.Ext(fileName)
+			fileNameWithoutExt := fileName[:len(fileName)-len(extension)]
+			fmt.Printf("%d. %s\n", (i + 1), fileNameWithoutExt)
+		}
+
+		fmt.Print("Enter the number of the file you want to edit: ")
+		var userInput int
+		_, err = fmt.Scanln(&userInput)
+		if err != nil {
+			fmt.Println("Invalid input:", err)
+			return
+		}
+
+		// Ensure the user input is a valid index
+		if userInput < 1 || userInput > len(files) {
+			fmt.Println("Invalid choice. Please select a number between 1 and", len(files))
+			return
+		}
+
+		// Delete the selected file
+		selectedFile := files[userInput-1]
+
+		cmd := exec.Command(editor, langDir+string(os.PathSeparator)+selectedFile.Name())
+
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		err = cmd.Start()
+		if err != nil {
+			panic(err)
+		}
+
+		err = cmd.Wait()
+		if err != nil {
+			panic(err)
+		}
+
 		return
 	}
 
